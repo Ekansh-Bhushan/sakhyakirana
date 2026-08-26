@@ -37,7 +37,8 @@
   }
 
   *{box-sizing:border-box; margin:0; padding:0;}
-  body{background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; line-height:1.6; transition:background 0.2s ease, color 0.2s ease;}
+  html{overflow-x:hidden;}
+  body{background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; line-height:1.6; transition:background 0.2s ease, color 0.2s ease; overflow-x:hidden;}
   h1,h2,h3,.display{font-family:'Baloo 2',sans-serif; font-weight:700; color:var(--text); line-height:1.15;}
   .wrap{max-width:980px; margin:0 auto; padding:0 28px;}
   a{color:inherit;}
@@ -94,8 +95,10 @@
   .finding p{font-size:14px; opacity:0.82;}
 
   /* gap comparison */
-  .gap-table{width:100%; border-collapse:collapse; margin-top:8px; background:var(--card-bg); border-radius:18px; overflow:hidden; border:1px solid var(--line);}
-  .gap-table th, .gap-table td{padding:16px 18px; text-align:left; font-size:14.5px; border-bottom:1px solid var(--line);}
+  .table-wrap{margin-top:8px; background:var(--card-bg); border-radius:18px; border:1px solid var(--line); overflow-x:auto;}
+  .gap-table{width:100%; min-width:680px; border-collapse:collapse;}
+  .gap-table th, .gap-table td{padding:16px 18px; text-align:left; font-size:14.5px; border-bottom:1px solid var(--line); white-space:nowrap;}
+  .gap-table td[colspan]{white-space:normal;}
   .gap-table th{background:var(--bg-deep); font-family:'Baloo 2'; font-weight:600; font-size:14.5px;}
   .gap-table tr:last-child td{border-bottom:none;}
   .gap-table td.yes{color:var(--pos); font-weight:600;}
@@ -237,6 +240,7 @@
     <div class="wrap">
       <div class="section-label">The gap</div>
       <h2>What existing solutions typically cover</h2>
+      <div class="table-wrap">
       <table class="gap-table">
         <tr>
           <th>Category of solution</th>
@@ -268,6 +272,7 @@
           <td class="yes">This is the wedge</td>
         </tr>
       </table>
+      </div>
     </div>
   </section>
 
