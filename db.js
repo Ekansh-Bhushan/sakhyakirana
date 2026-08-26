@@ -14,6 +14,12 @@ if (!connectionString) {
 const pool = new Pool({
   connectionString,
   ssl: process.env.PGSSL === 'disable' ? false : { rejectUnauthorized: false },
+  // Serverless Postgres (Neon, etc.) on a free tier can take a few seconds to
+  // wake from idle-suspend — the default ~1s connect timeout in `pg` is too
+  // tight for that and turns a cold start into a hard failure.
+  connectionTimeoutMillis: 10_000,
+  idleTimeoutMillis: 30_000,
+  max: 5,
 });
 
 // Idle clients in the pool can throw on a connection blip; without this handler
@@ -22,16 +28,33 @@ pool.on('error', (err) => {
   console.error('[db] Unexpected error on idle Postgres client', err);
 });
 
-async function ensureSchema() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS submissions (
-      id UUID PRIMARY KEY,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      iv TEXT NOT NULL,
-      auth_tag TEXT NOT NULL,
-      ciphertext TEXT NOT NULL
-    );
-  `);
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Retries with backoff so a slow cold-start Postgres (or a brief network blip)
+// doesn't take down startup — see the retry loop this feeds in server.js.
+async function ensureSchema(attempts = 5) {
+  let lastErr;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS submissions (
+          id UUID PRIMARY KEY,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          iv TEXT NOT NULL,
+          auth_tag TEXT NOT NULL,
+          ciphertext TEXT NOT NULL
+        );
+      `);
+      return;
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[db] Schema check failed (attempt ${i}/${attempts}): ${err.message}`);
+      if (i < attempts) await wait(1000 * i);
+    }
+  }
+  throw lastErr;
 }
 
 async function insertSubmission(record) {

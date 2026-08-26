@@ -280,9 +280,28 @@ const server = http.createServer(async (req, res) => {
       return sendFile(res, path.join(ROOT, 'admin.html'), 'text/html; charset=utf-8');
     }
 
+    if (req.method === 'GET' && url.pathname === '/health') {
+      // Always 200 if the process is alive and answering HTTP — the site is
+      // designed to keep serving pages even when Postgres is unreachable, so
+      // a DB outage shouldn't read as "the app is down" to an uptime monitor.
+      // `db` here is what actually tells you whether submissions will work.
+      // Reports the cached status rather than probing live, so this stays a
+      // fast, cheap endpoint safe to poll frequently — the DB-backed routes
+      // already self-heal and retry on their own (see isDbReady above them).
+      return sendJson(res, 200, {
+        status: 'ok',
+        db: dbReady ? 'connected' : 'unreachable',
+        uptimeSeconds: Math.round(process.uptime()),
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     if (req.method === 'POST' && url.pathname === '/api/submissions') {
       if (rateLimited(submissionHits, clientIp(req), 10, 60 * 60 * 1000)) {
         return sendJson(res, 429, { error: 'Too many submissions from this connection. Please try again later.' });
+      }
+      if (!(await isDbReady())) {
+        return sendJson(res, 503, { error: 'Database is warming up, please try again in a few seconds.' });
       }
       const body = await readJsonBody(req);
       const { error, value } = validateSubmission(body);
@@ -324,6 +343,9 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/submissions') {
       if (!isAuthedAdmin(req)) return sendJson(res, 401, { error: 'Not authenticated.' });
+      if (!(await isDbReady())) {
+        return sendJson(res, 503, { error: 'Database is warming up, please try again in a few seconds.' });
+      }
       const list = await db.listSubmissions();
       const decrypted = list.map((r) => {
         try {
@@ -343,15 +365,37 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// The HTTP server starts unconditionally — the public page and the admin
+// shell must stay reachable even if Postgres is slow to wake (common on
+// free-tier serverless Postgres) or briefly unreachable. Only the DB-backed
+// routes depend on this succeeding; see dbReady below.
+let dbReady = false;
 db.ensureSchema()
   .then(() => {
-    server.listen(PORT, () => {
-      console.log(`SakhyaKirana server running at http://localhost:${PORT}`);
-      console.log(`Admin panel:                   http://localhost:${PORT}/admin`);
-    });
+    dbReady = true;
+    console.log('[sakhyakirana] Connected to Postgres and verified the submissions table.');
   })
   .catch((err) => {
-    console.error('[sakhyakirana] Could not connect to Postgres / create the submissions table.');
+    console.error('[sakhyakirana] Could not connect to Postgres / create the submissions table. Submissions and the admin panel will return errors until this is fixed — the rest of the site still works.');
     console.error(err);
-    process.exit(1);
   });
+
+// Self-heals a stale dbReady=false: if the initial connect attempt gave up
+// (see ensureSchema's retry count in db.js) but Postgres has since become
+// reachable — e.g. a serverless DB finished waking up — this lets the next
+// request succeed instead of staying stuck on the earlier failure forever.
+async function isDbReady() {
+  if (dbReady) return true;
+  try {
+    await db.ensureSchema(1);
+    dbReady = true;
+  } catch {
+    dbReady = false;
+  }
+  return dbReady;
+}
+
+server.listen(PORT, () => {
+  console.log(`SakhyaKirana server running at http://localhost:${PORT}`);
+  console.log(`Admin panel:                   http://localhost:${PORT}/admin`);
+});
