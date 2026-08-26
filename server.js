@@ -34,7 +34,7 @@ function fromBase64url(str) {
 
 // ---------- Encryption key (AES-256-GCM) ----------
 function loadOrCreateEncryptionKey() {
-  const envKey = process.env.SUBMISSIONS_ENCRYPTION_KEY;
+  const envKey = (process.env.SUBMISSIONS_ENCRYPTION_KEY || '').trim();
   if (envKey) {
     const buf = Buffer.from(envKey, 'hex');
     if (buf.length !== 32) {
@@ -79,7 +79,8 @@ function decrypt(record) {
 
 // ---------- Admin auth ----------
 function loadOrCreateSessionSecret() {
-  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  const envSecret = (process.env.SESSION_SECRET || '').trim();
+  if (envSecret) return envSecret;
   if (fs.existsSync(SESSION_SECRET_FILE)) return fs.readFileSync(SESSION_SECRET_FILE, 'utf8').trim();
   const secret = crypto.randomBytes(32).toString('hex');
   fs.writeFileSync(SESSION_SECRET_FILE, secret, { mode: 0o600 });
@@ -102,8 +103,13 @@ function verifyPassword(password, stored) {
 }
 
 let ADMIN_PASSWORD_HASH;
-if (process.env.ADMIN_PASSWORD) {
-  ADMIN_PASSWORD_HASH = hashPassword(process.env.ADMIN_PASSWORD);
+// .trim() guards against the trailing newline/space that copy-pasting into a
+// cloud host's env var UI commonly introduces — without it, a value that looks
+// identical on screen silently fails to match on login.
+const envAdminPassword = (process.env.ADMIN_PASSWORD || '').trim();
+if (envAdminPassword) {
+  ADMIN_PASSWORD_HASH = hashPassword(envAdminPassword);
+  console.log(`[sakhyakirana] Using ADMIN_PASSWORD from environment (${envAdminPassword.length} characters).`);
 } else {
   const generated = base64url(crypto.randomBytes(9));
   ADMIN_PASSWORD_HASH = hashPassword(generated);
@@ -296,7 +302,7 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 429, { error: 'Too many login attempts. Try again later.' });
       }
       const body = await readJsonBody(req);
-      const password = typeof body.password === 'string' ? body.password : '';
+      const password = typeof body.password === 'string' ? body.password.trim() : '';
       const ok = Boolean(password) && verifyPassword(password, ADMIN_PASSWORD_HASH);
       if (!ok) {
         await new Promise((r) => setTimeout(r, 400));

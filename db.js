@@ -2,7 +2,7 @@
 
 const { Pool } = require('pg');
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = (process.env.DATABASE_URL || '').trim();
 if (!connectionString) {
   throw new Error('DATABASE_URL is not set. Copy .env.example to .env and fill it in, or set it in your host\'s environment variables.');
 }
