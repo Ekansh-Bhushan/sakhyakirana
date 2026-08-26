@@ -137,6 +137,9 @@
   .field input:focus, .field select:focus, .field textarea:focus{outline:none; border-color:var(--clay);}
   .checkbox-field label{display:flex; align-items:center; gap:8px; font-weight:500; font-size:14.5px; cursor:pointer;}
   .checkbox-field input{width:16px; height:16px;}
+  .optional-marker{font-weight:400; color:var(--text-soft);}
+  .required-marker{font-weight:700; color:var(--clay);}
+  .checkbox-field .hint{font-size:13px; color:var(--clay); margin-top:8px;}
   .btn-submit{
     margin-top:22px; padding:12px 26px; border-radius:10px; border:none; background:var(--clay);
     color:#fff; font-weight:700; font-size:15px; font-family:inherit; cursor:pointer;
@@ -314,11 +317,11 @@
       <form id="survey-form" class="form-card">
         <div class="form-grid">
           <div class="field">
-            <label for="f-name">Your name (optional)</label>
+            <label for="f-name">Your name <span class="optional-marker" id="name-optional">(optional)</span></label>
             <input type="text" id="f-name" name="name" maxlength="120" autocomplete="name">
           </div>
           <div class="field">
-            <label for="f-contact">Phone or email (optional)</label>
+            <label for="f-contact">Phone or email <span class="optional-marker" id="contact-optional">(optional)</span></label>
             <input type="text" id="f-contact" name="contact" maxlength="150" autocomplete="tel">
           </div>
           <div class="field">
@@ -350,6 +353,7 @@
         </div>
         <div class="field checkbox-field">
           <label><input type="checkbox" id="f-interested" name="interested"> I'm interested — help us set this up for my store</label>
+          <p class="hint" id="interested-hint" hidden>Since you'd like setup help, please add your name and phone/email above so we can reach you.</p>
         </div>
         <button class="btn-submit" type="submit">Submit</button>
         <div class="form-msg" id="form-msg"></div>
@@ -402,10 +406,29 @@
   var citySelect = document.getElementById('f-city');
   var cityOtherWrap = document.getElementById('f-city-other-wrap');
   var formMsg = document.getElementById('form-msg');
+  var nameInput = document.getElementById('f-name');
+  var contactInput = document.getElementById('f-contact');
+  var nameOptionalMarker = document.getElementById('name-optional');
+  var contactOptionalMarker = document.getElementById('contact-optional');
+  var interestedCheckbox = document.getElementById('f-interested');
+  var interestedHint = document.getElementById('interested-hint');
 
   citySelect.addEventListener('change', function(){
     cityOtherWrap.hidden = citySelect.value !== 'Other';
   });
+
+  function syncInterestedRequirement(){
+    var interested = interestedCheckbox.checked;
+    nameInput.required = interested;
+    contactInput.required = interested;
+    interestedHint.hidden = !interested;
+    nameOptionalMarker.textContent = interested ? '*' : '(optional)';
+    nameOptionalMarker.className = interested ? 'required-marker' : 'optional-marker';
+    contactOptionalMarker.textContent = interested ? '*' : '(optional)';
+    contactOptionalMarker.className = interested ? 'required-marker' : 'optional-marker';
+  }
+  interestedCheckbox.addEventListener('change', syncInterestedRequirement);
+  syncInterestedRequirement();
 
   form.addEventListener('submit', async function(e){
     e.preventDefault();
@@ -434,6 +457,7 @@
       if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
       form.reset();
       cityOtherWrap.hidden = true;
+      syncInterestedRequirement();
       formMsg.textContent = "Thank you — we've received this and will follow up if you asked for setup help.";
       formMsg.classList.add('success');
     } catch (err) {

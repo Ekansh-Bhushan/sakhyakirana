@@ -238,6 +238,10 @@ function validateSubmission(body) {
   const contact = sanitizeString(body.contact, 150);
   const interested = Boolean(body.interested);
 
+  if (interested && (!name || !contact)) {
+    return { error: 'Please share your name and a phone number or email so we can follow up about setup help.' };
+  }
+
   return { value: { name, contact, role, city, cityOther, problem, interested } };
 }
 
