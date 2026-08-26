@@ -242,29 +242,37 @@ function validateSubmission(body) {
 }
 
 // ---------- HTTP helpers ----------
-function sendJson(res, status, obj) {
+// HEAD must be accepted anywhere GET is — uptime monitors (UptimeRobot
+// included) commonly send HEAD instead of GET for lighter checks. Per HTTP
+// semantics a HEAD response carries the same headers as GET but no body.
+function isGettable(method) {
+  return method === 'GET' || method === 'HEAD';
+}
+
+function sendJson(res, status, obj, method) {
   const body = JSON.stringify(obj);
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
     'X-Content-Type-Options': 'nosniff',
   });
-  res.end(body);
+  res.end(method === 'HEAD' ? undefined : body);
 }
 
-function sendFile(res, filePath, contentType) {
+function sendFile(res, filePath, contentType, method) {
   fs.readFile(filePath, (err, data) => {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('Not found');
+      res.end(method === 'HEAD' ? undefined : 'Not found');
       return;
     }
     res.writeHead(200, {
       'Content-Type': contentType,
+      'Content-Length': Buffer.byteLength(data),
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
     });
-    res.end(data);
+    res.end(method === 'HEAD' ? undefined : data);
   });
 }
 
@@ -272,15 +280,15 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   try {
-    if (req.method === 'GET' && url.pathname === '/') {
-      return sendFile(res, path.join(ROOT, 'index.html'), 'text/html; charset=utf-8');
+    if (isGettable(req.method) && url.pathname === '/') {
+      return sendFile(res, path.join(ROOT, 'index.html'), 'text/html; charset=utf-8', req.method);
     }
 
-    if (req.method === 'GET' && url.pathname === '/admin') {
-      return sendFile(res, path.join(ROOT, 'admin.html'), 'text/html; charset=utf-8');
+    if (isGettable(req.method) && url.pathname === '/admin') {
+      return sendFile(res, path.join(ROOT, 'admin.html'), 'text/html; charset=utf-8', req.method);
     }
 
-    if (req.method === 'GET' && url.pathname === '/health') {
+    if (isGettable(req.method) && url.pathname === '/health') {
       // Always 200 if the process is alive and answering HTTP — the site is
       // designed to keep serving pages even when Postgres is unreachable, so
       // a DB outage shouldn't read as "the app is down" to an uptime monitor.
@@ -293,7 +301,7 @@ const server = http.createServer(async (req, res) => {
         db: dbReady ? 'connected' : 'unreachable',
         uptimeSeconds: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
-      });
+      }, req.method);
     }
 
     if (req.method === 'POST' && url.pathname === '/api/submissions') {
@@ -337,14 +345,14 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ok: true });
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/admin/session') {
-      return sendJson(res, 200, { authenticated: isAuthedAdmin(req) });
+    if (isGettable(req.method) && url.pathname === '/api/admin/session') {
+      return sendJson(res, 200, { authenticated: isAuthedAdmin(req) }, req.method);
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/submissions') {
-      if (!isAuthedAdmin(req)) return sendJson(res, 401, { error: 'Not authenticated.' });
+    if (isGettable(req.method) && url.pathname === '/api/submissions') {
+      if (!isAuthedAdmin(req)) return sendJson(res, 401, { error: 'Not authenticated.' }, req.method);
       if (!(await isDbReady())) {
-        return sendJson(res, 503, { error: 'Database is warming up, please try again in a few seconds.' });
+        return sendJson(res, 503, { error: 'Database is warming up, please try again in a few seconds.' }, req.method);
       }
       const list = await db.listSubmissions();
       const decrypted = list.map((r) => {
@@ -354,11 +362,11 @@ const server = http.createServer(async (req, res) => {
           return { id: r.id, createdAt: r.createdAt, error: 'Could not decrypt this record.' };
         }
       });
-      return sendJson(res, 200, { submissions: decrypted });
+      return sendJson(res, 200, { submissions: decrypted }, req.method);
     }
 
     res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('Not found');
+    res.end(req.method === 'HEAD' ? undefined : 'Not found');
   } catch (err) {
     console.error(err);
     sendJson(res, 500, { error: 'Something went wrong.' });
