@@ -4,31 +4,63 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Problem Statement — SakhyaKirana</title>
+<meta name="color-scheme" content="light dark">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --clay:#C24A2C; --clay-dark:#A83E22; --ink:#1F3A52; --ink-light:#345A7A;
-    --gold:#E8A23A; --paper:#FBF3E6; --paper-deep:#F3E7D4; --charcoal:#2B2320;
-    --charcoal-soft:#5B4F48; --line: rgba(43,35,32,0.12); --green:#3F6B4C;
+    --gold:#E8A23A; --bg:#FBF3E6; --bg-deep:#F3E7D4; --text:#2B2320;
+    --text-soft:#5B4F48; --line: rgba(43,35,32,0.12); --card-bg:#FFFFFF;
+    --pos:#3F6B4C; --neg:#A83E22; --warn:#9C7A1F;
+    --ps-grad-a:#CB5535; --ps-grad-b:#A83E22;
+    color-scheme: light;
   }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --clay:#E8623D; --clay-dark:#F0916F; --ink:#2C4C6B; --ink-light:#5580A6;
+      --gold:#F0B15A; --bg:#181310; --bg-deep:#241D17; --text:#F3E7D4;
+      --text-soft:#B8A99A; --line: rgba(243,231,212,0.14); --card-bg:#221B16;
+      --pos:#6FBE86; --neg:#E8623D; --warn:#E0B15A;
+      --ps-grad-a:#8A3A24; --ps-grad-b:#5E2818;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --clay:#E8623D; --clay-dark:#F0916F; --ink:#2C4C6B; --ink-light:#5580A6;
+    --gold:#F0B15A; --bg:#181310; --bg-deep:#241D17; --text:#F3E7D4;
+    --text-soft:#B8A99A; --line: rgba(243,231,212,0.14); --card-bg:#221B16;
+    --pos:#6FBE86; --neg:#E8623D; --warn:#E0B15A;
+    --ps-grad-a:#8A3A24; --ps-grad-b:#5E2818;
+    color-scheme: dark;
+  }
+
   *{box-sizing:border-box; margin:0; padding:0;}
-  body{background:var(--paper); color:var(--charcoal); font-family:'Inter',sans-serif; line-height:1.6;}
-  h1,h2,h3,.display{font-family:'Baloo 2',sans-serif; font-weight:700; color:var(--charcoal); line-height:1.15;}
+  body{background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; line-height:1.6; transition:background 0.2s ease, color 0.2s ease;}
+  h1,h2,h3,.display{font-family:'Baloo 2',sans-serif; font-weight:700; color:var(--text); line-height:1.15;}
   .wrap{max-width:980px; margin:0 auto; padding:0 28px;}
   a{color:inherit;}
 
   header{padding:26px 0; border-bottom:1px solid var(--line);}
-  header .wrap{display:flex; align-items:center; justify-content:space-between;}
+  header .wrap{display:flex; align-items:center; justify-content:space-between; gap:16px;}
   .brand{display:flex; align-items:center; gap:10px; font-family:'Baloo 2'; font-weight:700; font-size:20px;}
   .brand svg{flex-shrink:0;}
-  .tag-pill{font-size:12.5px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase; color:var(--clay-dark); background:var(--paper-deep); padding:6px 14px; border-radius:100px; border:1px solid var(--line);}
+  .header-right{display:flex; align-items:center; gap:12px;}
+  .tag-pill{font-size:12.5px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase; color:var(--clay-dark); background:var(--bg-deep); padding:6px 14px; border-radius:100px; border:1px solid var(--line);}
+
+  .theme-toggle{
+    display:flex; align-items:center; justify-content:center; width:38px; height:38px;
+    border-radius:50%; border:1px solid var(--line); background:var(--card-bg); color:var(--text);
+    cursor:pointer; flex-shrink:0;
+  }
+  .theme-toggle:hover{border-color:var(--clay);}
+  .theme-toggle svg{width:18px; height:18px;}
 
   .hero{padding:64px 0 40px;}
   .hero .kicker{font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--clay); margin-bottom:14px;}
   .hero h1{font-size:clamp(30px,4.4vw,48px); max-width:760px; letter-spacing:-0.5px;}
-  .hero p{font-size:17.5px; color:var(--charcoal-soft); max-width:680px; margin-top:18px;}
+  .hero p{font-size:17.5px; color:var(--text-soft); max-width:680px; margin-top:18px;}
 
   section{padding:52px 0; border-bottom:1px solid var(--line);}
   section:last-of-type{border-bottom:none;}
@@ -38,14 +70,14 @@
   /* stat grid */
   .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-top:8px;}
   @media (max-width:800px){ .stat-grid{grid-template-columns:1fr 1fr;} }
-  .stat-card{background:#fff; border:1px solid var(--line); border-radius:18px; padding:24px 20px;}
-  .stat-num{font-family:'Baloo 2'; font-weight:700; font-size:32px; color:var(--ink);}
-  .stat-label{font-size:13.5px; color:var(--charcoal-soft); margin-top:8px; line-height:1.45;}
-  .source-note{font-size:12.5px; color:var(--charcoal-soft); margin-top:16px; opacity:0.8;}
+  .stat-card{background:var(--card-bg); border:1px solid var(--line); border-radius:18px; padding:24px 20px;}
+  .stat-num{font-family:'Baloo 2'; font-weight:700; font-size:32px; color:var(--ink-light);}
+  .stat-label{font-size:13.5px; color:var(--text-soft); margin-top:8px; line-height:1.45;}
+  .source-note{font-size:12.5px; color:var(--text-soft); margin-top:16px; opacity:0.8;}
 
   /* field research callout */
   .field-box{
-    background:var(--ink); color:var(--paper); border-radius:26px; padding:40px;
+    background:var(--ink); color:#FBF3E6; border-radius:26px; padding:40px; border:1px solid var(--line);
   }
   .field-box .loc{
     display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:700;
@@ -62,33 +94,58 @@
   .finding p{font-size:14px; opacity:0.82;}
 
   /* gap comparison */
-  .gap-table{width:100%; border-collapse:collapse; margin-top:8px; background:#fff; border-radius:18px; overflow:hidden; border:1px solid var(--line);}
+  .gap-table{width:100%; border-collapse:collapse; margin-top:8px; background:var(--card-bg); border-radius:18px; overflow:hidden; border:1px solid var(--line);}
   .gap-table th, .gap-table td{padding:16px 18px; text-align:left; font-size:14.5px; border-bottom:1px solid var(--line);}
-  .gap-table th{background:var(--paper-deep); font-family:'Baloo 2'; font-weight:600; font-size:14.5px;}
+  .gap-table th{background:var(--bg-deep); font-family:'Baloo 2'; font-weight:600; font-size:14.5px;}
   .gap-table tr:last-child td{border-bottom:none;}
-  .gap-table td.yes{color:var(--green); font-weight:600;}
-  .gap-table td.no{color:var(--clay-dark); font-weight:600;}
-  .gap-table td.partial{color:#9C7A1F; font-weight:600;}
-  .gap-table tr.ours{background:#FBF3E680;}
+  .gap-table td.yes{color:var(--pos); font-weight:600;}
+  .gap-table td.no{color:var(--neg); font-weight:600;}
+  .gap-table td.partial{color:var(--warn); font-weight:600;}
+  .gap-table tr.ours{background:var(--bg-deep);}
   .gap-table tr.ours td:first-child{font-weight:700;}
 
   /* PS statement */
   .ps-box{
-    background:linear-gradient(160deg,#CB5535,#A83E22); color:var(--paper);
-    border-radius:26px; padding:44px; text-align:center;
+    background:linear-gradient(160deg,var(--ps-grad-a),var(--ps-grad-b)); color:#FBF3E6;
+    border-radius:26px; padding:44px; text-align:center; border:1px solid var(--line);
   }
   .ps-box .section-label{color:var(--gold);}
   .ps-box p{font-family:'Baloo 2'; font-weight:600; font-size:clamp(20px,2.6vw,27px); line-height:1.4; max-width:760px; margin:0 auto;}
 
   /* direction */
   .direction-list{display:flex; flex-direction:column; gap:16px; margin-top:8px;}
-  .direction-item{display:flex; gap:16px; align-items:flex-start; background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px 22px;}
+  .direction-item{display:flex; gap:16px; align-items:flex-start; background:var(--card-bg); border:1px solid var(--line); border-radius:16px; padding:20px 22px;}
   .direction-item .idx{font-family:'Baloo 2'; font-weight:700; color:var(--clay); font-size:18px; flex-shrink:0;}
   .direction-item h3{font-size:16px; margin-bottom:4px;}
-  .direction-item p{font-size:14.5px; color:var(--charcoal-soft);}
+  .direction-item p{font-size:14.5px; color:var(--text-soft);}
+
+  /* survey form */
+  .form-card{background:var(--card-bg); border:1px solid var(--line); border-radius:20px; padding:32px; max-width:720px;}
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  @media (max-width:600px){ .form-grid{grid-template-columns:1fr;} }
+  .field{margin-top:18px;}
+  .form-grid .field{margin-top:0;}
+  .field label{display:block; font-size:13.5px; font-weight:600; margin-bottom:6px;}
+  .field input[type="text"], .field select, .field textarea{
+    width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--line);
+    background:var(--bg); color:var(--text); font-size:14.5px; font-family:inherit;
+  }
+  .field textarea{resize:vertical;}
+  .field input:focus, .field select:focus, .field textarea:focus{outline:none; border-color:var(--clay);}
+  .checkbox-field label{display:flex; align-items:center; gap:8px; font-weight:500; font-size:14.5px; cursor:pointer;}
+  .checkbox-field input{width:16px; height:16px;}
+  .btn-submit{
+    margin-top:22px; padding:12px 26px; border-radius:10px; border:none; background:var(--clay);
+    color:#fff; font-weight:700; font-size:15px; font-family:inherit; cursor:pointer;
+  }
+  .btn-submit:hover{background:var(--clay-dark);}
+  .btn-submit:disabled{opacity:0.6; cursor:not-allowed;}
+  .form-msg{font-size:14px; margin-top:14px; min-height:18px;}
+  .form-msg.error{color:var(--neg);}
+  .form-msg.success{color:var(--pos);}
 
   footer{padding:36px 0; text-align:center;}
-  footer p{font-size:13px; color:var(--charcoal-soft);}
+  footer p{font-size:13px; color:var(--text-soft);}
 </style>
 </head>
 <body>
@@ -103,7 +160,13 @@
       </svg>
       SakhyaKirana
     </div>
-    <div class="tag-pill">Problem Statement</div>
+    <div class="header-right">
+      <div class="tag-pill">Problem Statement</div>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark theme">
+        <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+        <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
+    </div>
   </div>
 </header>
 
@@ -111,8 +174,8 @@
   <section class="hero" style="border-bottom:none;">
     <div class="wrap">
       <div class="kicker">Why we're building this</div>
-      <h1>Delhi's kirana stores aren't losing to quick-commerce because they won't change. They're losing because no one has time.</h1>
-      <p>This problem statement is built on national industry data and our own in-person field survey of kirana store owners in Rohini Sector 17, Delhi — conducted in August 2026.</p>
+      <h1>Kirana stores aren't losing to quick-commerce because they won't change. They're losing because no one has time.</h1>
+      <p>This problem statement is built on national industry data and our own in-person field survey of kirana store owners across major areas of Delhi, and in Gurugram, Bahadurgarh, and Dehradun — conducted in August 2026.</p>
     </div>
   </section>
 
@@ -147,8 +210,8 @@
       <div class="section-label">Our field research</div>
       <h2>What shopkeepers actually told us</h2>
       <div class="field-box">
-        <div class="loc"><span class="dot"></span> Rohini Sector 17, Delhi — August 2026</div>
-        <p class="note">Store owners were largely too busy to engage at first — several only opened up after being offered sweets. That reluctance turned out to be data in itself: it's the clearest sign of how stretched for time these shopkeepers already are.</p>
+        <div class="loc"><span class="dot"></span> Delhi, Gurugram, Bahadurgarh &amp; Dehradun — August 2026</div>
+        <p class="note">Across all four regions, store owners were largely too busy to engage at first — several only opened up after being offered sweets. That reluctance turned out to be data in itself: it's the clearest sign of how stretched for time these shopkeepers already are, city after city.</p>
         <div class="finding-grid">
           <div class="finding">
             <div class="num">#1</div>
@@ -173,10 +236,10 @@
   <section>
     <div class="wrap">
       <div class="section-label">The gap</div>
-      <h2>What existing tools actually solve</h2>
+      <h2>What existing solutions typically cover</h2>
       <table class="gap-table">
         <tr>
-          <th>Tool</th>
+          <th>Category of solution</th>
           <th>Online ordering</th>
           <th>Billing / GST</th>
           <th>Credit (khata)</th>
@@ -184,7 +247,7 @@
           <th>Reduces labour</th>
         </tr>
         <tr>
-          <td>KiranaOS</td>
+          <td>Digital storefront &amp; ordering apps</td>
           <td class="yes">Yes</td>
           <td class="no">No</td>
           <td class="no">No</td>
@@ -192,7 +255,7 @@
           <td class="partial">Partial</td>
         </tr>
         <tr>
-          <td>Vyapar / Khatabook / OkCredit</td>
+          <td>Billing &amp; credit-ledger apps</td>
           <td class="no">No</td>
           <td class="yes">Yes</td>
           <td class="yes">Yes</td>
@@ -237,13 +300,146 @@
       </div>
     </div>
   </section>
+
+  <section style="border-bottom:none;">
+    <div class="wrap">
+      <div class="section-label">Talk to us</div>
+      <h2>Tell us what's actually going wrong</h2>
+      <p style="color:var(--text-soft); font-size:15.5px; max-width:640px; margin-bottom:24px;">Whether you run a kirana store or shop at one, tell us the problem you're facing day to day. If the idea resonates and you'd like help setting it up for your store, tick the box below and we'll reach out.</p>
+      <form id="survey-form" class="form-card">
+        <div class="form-grid">
+          <div class="field">
+            <label for="f-name">Your name (optional)</label>
+            <input type="text" id="f-name" name="name" maxlength="120" autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="f-contact">Phone or email (optional)</label>
+            <input type="text" id="f-contact" name="contact" maxlength="150" autocomplete="tel">
+          </div>
+          <div class="field">
+            <label for="f-role">I am a</label>
+            <select id="f-role" name="role">
+              <option value="shopkeeper">Shopkeeper</option>
+              <option value="customer">Customer</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-city">City</label>
+            <select id="f-city" name="city">
+              <option value="Delhi">Delhi</option>
+              <option value="Gurugram">Gurugram</option>
+              <option value="Bahadurgarh">Bahadurgarh</option>
+              <option value="Dehradun">Dehradun</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" id="f-city-other-wrap" hidden>
+          <label for="f-city-other">Which city?</label>
+          <input type="text" id="f-city-other" name="cityOther" maxlength="100">
+        </div>
+        <div class="field">
+          <label for="f-problem">What problem are you facing? *</label>
+          <textarea id="f-problem" name="problem" rows="4" maxlength="3000" required placeholder="e.g. Not enough hands to track stock, losing customers to Blinkit/Zepto, hard to keep the ledger updated..."></textarea>
+        </div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="f-interested" name="interested"> I'm interested — help us set this up for my store</label>
+        </div>
+        <button class="btn-submit" type="submit">Submit</button>
+        <div class="form-msg" id="form-msg"></div>
+      </form>
+    </div>
+  </section>
 </main>
 
 <footer>
   <div class="wrap">
-    <p>Problem statement compiled from primary field research (Rohini Sector 17, Delhi, Aug 2026) and secondary industry data. Prepared for internal and public review.</p>
+    <p>Problem statement compiled from primary field research across Delhi, Gurugram, Bahadurgarh, and Dehradun (Aug 2026) and secondary industry data. Prepared for internal and public review.</p>
   </div>
 </footer>
+
+<script>
+(function(){
+  var root = document.documentElement;
+  var stored = localStorage.getItem('theme');
+  if (stored === 'dark' || stored === 'light') root.setAttribute('data-theme', stored);
+
+  var btn = document.getElementById('theme-toggle');
+  var sunIcon = document.getElementById('icon-sun');
+  var moonIcon = document.getElementById('icon-moon');
+
+  function isDarkActive(){
+    var explicit = root.getAttribute('data-theme');
+    if (explicit === 'dark') return true;
+    if (explicit === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  function syncIcon(){
+    var dark = isDarkActive();
+    sunIcon.style.display = dark ? 'block' : 'none';
+    moonIcon.style.display = dark ? 'none' : 'block';
+    btn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+  }
+
+  btn.addEventListener('click', function(){
+    var next = isDarkActive() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    syncIcon();
+  });
+
+  syncIcon();
+
+  // ---------- survey form ----------
+  var form = document.getElementById('survey-form');
+  var citySelect = document.getElementById('f-city');
+  var cityOtherWrap = document.getElementById('f-city-other-wrap');
+  var formMsg = document.getElementById('form-msg');
+
+  citySelect.addEventListener('change', function(){
+    cityOtherWrap.hidden = citySelect.value !== 'Other';
+  });
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    var submitBtn = form.querySelector('.btn-submit');
+    submitBtn.disabled = true;
+    formMsg.textContent = '';
+    formMsg.className = 'form-msg';
+
+    var payload = {
+      name: form.name.value,
+      contact: form.contact.value,
+      role: form.role.value,
+      city: form.city.value,
+      cityOther: form.cityOther.value,
+      problem: form.problem.value,
+      interested: form.interested.checked,
+    };
+
+    try {
+      var res = await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      var data = await res.json().catch(function(){ return {}; });
+      if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+      form.reset();
+      cityOtherWrap.hidden = true;
+      formMsg.textContent = "Thank you — we've received this and will follow up if you asked for setup help.";
+      formMsg.classList.add('success');
+    } catch (err) {
+      formMsg.textContent = err.message;
+      formMsg.classList.add('error');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+})();
+</script>
 
 </body>
 </html>

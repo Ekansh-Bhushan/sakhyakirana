@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — SakhyaKirana</title>
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --clay:#C24A2C; --clay-dark:#A83E22; --ink:#1F3A52; --ink-light:#345A7A;
+    --gold:#E8A23A; --bg:#FBF3E6; --bg-deep:#F3E7D4; --text:#2B2320;
+    --text-soft:#5B4F48; --line: rgba(43,35,32,0.12); --card-bg:#FFFFFF;
+    --pos:#3F6B4C; --neg:#A83E22; --warn:#9C7A1F;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --clay:#E8623D; --clay-dark:#F0916F; --ink:#2C4C6B; --ink-light:#5580A6;
+      --gold:#F0B15A; --bg:#181310; --bg-deep:#241D17; --text:#F3E7D4;
+      --text-soft:#B8A99A; --line: rgba(243,231,212,0.14); --card-bg:#221B16;
+      --pos:#6FBE86; --neg:#E8623D; --warn:#E0B15A;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --clay:#E8623D; --clay-dark:#F0916F; --ink:#2C4C6B; --ink-light:#5580A6;
+    --gold:#F0B15A; --bg:#181310; --bg-deep:#241D17; --text:#F3E7D4;
+    --text-soft:#B8A99A; --line: rgba(243,231,212,0.14); --card-bg:#221B16;
+    --pos:#6FBE86; --neg:#E8623D; --warn:#E0B15A;
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; line-height:1.6;}
+  h1,h2,.display{font-family:'Baloo 2',sans-serif; font-weight:700; color:var(--text); line-height:1.15;}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 28px;}
+  a{color:inherit;}
+  button{font-family:inherit;}
+
+  header{padding:22px 0; border-bottom:1px solid var(--line);}
+  header .wrap{display:flex; align-items:center; justify-content:space-between; gap:16px;}
+  .brand{display:flex; align-items:center; gap:10px; font-family:'Baloo 2'; font-weight:700; font-size:19px;}
+  .header-right{display:flex; align-items:center; gap:12px;}
+  .tag-pill{font-size:12.5px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase; color:var(--clay-dark); background:var(--bg-deep); padding:6px 14px; border-radius:100px; border:1px solid var(--line);}
+
+  .theme-toggle{
+    display:flex; align-items:center; justify-content:center; width:36px; height:36px;
+    border-radius:50%; border:1px solid var(--line); background:var(--card-bg); color:var(--text);
+    cursor:pointer; flex-shrink:0;
+  }
+  .theme-toggle:hover{border-color:var(--clay);}
+  .theme-toggle svg{width:17px; height:17px;}
+
+  .btn{
+    font-size:14px; font-weight:600; padding:9px 18px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card-bg); color:var(--text); cursor:pointer;
+  }
+  .btn:hover{border-color:var(--clay);}
+  .btn.primary{background:var(--clay); border-color:var(--clay); color:#fff;}
+  .btn.primary:hover{background:var(--clay-dark); border-color:var(--clay-dark);}
+  .btn:disabled{opacity:0.6; cursor:not-allowed;}
+
+  main{padding:48px 0 80px;}
+
+  /* login */
+  .login-wrap{max-width:380px; margin:60px auto 0;}
+  .login-card{background:var(--card-bg); border:1px solid var(--line); border-radius:20px; padding:36px;}
+  .login-card h1{font-size:24px; margin-bottom:8px;}
+  .login-card p{color:var(--text-soft); font-size:14.5px; margin-bottom:22px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:13px; font-weight:600; margin-bottom:6px;}
+  .field input, .field select, .field textarea{
+    width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--line);
+    background:var(--bg); color:var(--text); font-size:14.5px; font-family:inherit;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{outline:none; border-color:var(--clay);}
+  .form-msg{font-size:13.5px; margin-top:12px; min-height:18px;}
+  .form-msg.error{color:var(--neg);}
+  .form-msg.success{color:var(--pos);}
+
+  /* dashboard */
+  .stat-row{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px;}
+  @media (max-width:760px){ .stat-row{grid-template-columns:1fr 1fr;} }
+  .stat-card{background:var(--card-bg); border:1px solid var(--line); border-radius:16px; padding:18px 20px;}
+  .stat-num{font-family:'Baloo 2'; font-weight:700; font-size:26px; color:var(--ink-light);}
+  .stat-label{font-size:12.5px; color:var(--text-soft); margin-top:4px;}
+
+  .controls{display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px; align-items:center;}
+  .controls input[type="search"], .controls select{
+    padding:9px 13px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card-bg); color:var(--text); font-size:14px; font-family:inherit;
+  }
+  .controls input[type="search"]{flex:1; min-width:200px;}
+  .controls label.checkbox{display:flex; align-items:center; gap:6px; font-size:13.5px; color:var(--text-soft);}
+
+  .table-wrap{background:var(--card-bg); border:1px solid var(--line); border-radius:16px; overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; min-width:820px;}
+  th, td{padding:13px 16px; text-align:left; font-size:13.5px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{background:var(--bg-deep); font-family:'Baloo 2'; font-weight:600; font-size:13px; white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+  td.problem-cell{max-width:340px; white-space:pre-wrap; word-break:break-word;}
+  .pill{display:inline-block; font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; padding:3px 9px; border-radius:100px;}
+  .pill.interested{background:rgba(63,107,76,0.15); color:var(--pos);}
+  .pill.role{background:var(--bg-deep); color:var(--text-soft);}
+  .empty-state{padding:60px 20px; text-align:center; color:var(--text-soft);}
+
+  .top-bar{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap;}
+  .top-bar h1{font-size:26px;}
+
+  [hidden]{display:none !important;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 400 400">
+        <rect x="20" y="20" width="360" height="360" rx="88" ry="88" fill="#C24A2C"/>
+        <path d="M 262 128 C 262 100 216 88 182 100 C 148 112 140 145 160 168 C 185 197 245 195 258 222 C 272 250 255 282 215 288 C 178 293 150 275 142 250" stroke="#FBF3E6" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="140" cy="246" r="20" fill="#E8A23A"/>
+      </svg>
+      SakhyaKirana
+    </div>
+    <div class="header-right">
+      <div class="tag-pill">Admin</div>
+      <button class="btn" id="logout-btn" hidden>Log out</button>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark theme">
+        <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+        <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <div id="login-view" class="login-wrap" hidden>
+      <div class="login-card">
+        <h1>Admin sign-in</h1>
+        <p>Enter the admin password to view survey &amp; interest submissions. The password is printed to the server console on startup unless <code>ADMIN_PASSWORD</code> is set.</p>
+        <form id="login-form">
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required>
+          </div>
+          <button class="btn primary" type="submit" style="width:100%;">Sign in</button>
+          <div class="form-msg" id="login-msg"></div>
+        </form>
+      </div>
+    </div>
+
+    <div id="dashboard-view" hidden>
+      <div class="top-bar">
+        <h1>Submissions</h1>
+        <button class="btn" id="export-btn">Export CSV</button>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total submissions</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-interested">0</div><div class="stat-label">Interested in setup help</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-shopkeepers">0</div><div class="stat-label">From shopkeepers</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-customers">0</div><div class="stat-label">From customers</div></div>
+      </div>
+
+      <div class="controls">
+        <input type="search" id="search-input" placeholder="Search name, contact, or problem text…">
+        <select id="city-filter">
+          <option value="">All cities</option>
+          <option value="Delhi">Delhi</option>
+          <option value="Gurugram">Gurugram</option>
+          <option value="Bahadurgarh">Bahadurgarh</option>
+          <option value="Dehradun">Dehradun</option>
+          <option value="Other">Other</option>
+        </select>
+        <label class="checkbox"><input type="checkbox" id="interested-filter"> Interested only</label>
+      </div>
+
+      <div class="table-wrap">
+        <table id="submissions-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Who</th>
+              <th>Contact</th>
+              <th>Role</th>
+              <th>City</th>
+              <th>Problem</th>
+              <th>Interested</th>
+            </tr>
+          </thead>
+          <tbody id="submissions-body"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state" hidden>No submissions match these filters yet.</div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+(function(){
+  // ---------- theme ----------
+  var root = document.documentElement;
+  var stored = localStorage.getItem('theme');
+  if (stored === 'dark' || stored === 'light') root.setAttribute('data-theme', stored);
+  var themeBtn = document.getElementById('theme-toggle');
+  var sunIcon = document.getElementById('icon-sun');
+  var moonIcon = document.getElementById('icon-moon');
+  function isDarkActive(){
+    var explicit = root.getAttribute('data-theme');
+    if (explicit === 'dark') return true;
+    if (explicit === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  function syncIcon(){
+    var dark = isDarkActive();
+    sunIcon.style.display = dark ? 'block' : 'none';
+    moonIcon.style.display = dark ? 'none' : 'block';
+  }
+  themeBtn.addEventListener('click', function(){
+    var next = isDarkActive() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    syncIcon();
+  });
+  syncIcon();
+
+  // ---------- state ----------
+  var allSubmissions = [];
+  var loginView = document.getElementById('login-view');
+  var dashboardView = document.getElementById('dashboard-view');
+  var logoutBtn = document.getElementById('logout-btn');
+  var loginForm = document.getElementById('login-form');
+  var loginMsg = document.getElementById('login-msg');
+  var searchInput = document.getElementById('search-input');
+  var cityFilter = document.getElementById('city-filter');
+  var interestedFilter = document.getElementById('interested-filter');
+  var tbody = document.getElementById('submissions-body');
+  var emptyState = document.getElementById('empty-state');
+  var exportBtn = document.getElementById('export-btn');
+
+  function showLogin(){
+    loginView.hidden = false;
+    dashboardView.hidden = true;
+    logoutBtn.hidden = true;
+  }
+  function showDashboard(){
+    loginView.hidden = true;
+    dashboardView.hidden = false;
+    logoutBtn.hidden = false;
+  }
+
+  function cellText(td, value){
+    td.textContent = value || '—';
+  }
+
+  function renderRows(){
+    var q = searchInput.value.trim().toLowerCase();
+    var city = cityFilter.value;
+    var interestedOnly = interestedFilter.checked;
+
+    var filtered = allSubmissions.filter(function(s){
+      if (city && s.city !== city) return false;
+      if (interestedOnly && !s.interested) return false;
+      if (q) {
+        var haystack = [s.name, s.contact, s.problem, s.cityOther].join(' ').toLowerCase();
+        if (haystack.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+
+    tbody.innerHTML = '';
+    emptyState.hidden = filtered.length > 0;
+
+    filtered.forEach(function(s){
+      var tr = document.createElement('tr');
+
+      var tdDate = document.createElement('td');
+      tdDate.textContent = s.createdAt ? new Date(s.createdAt).toLocaleString() : '—';
+      tr.appendChild(tdDate);
+
+      var tdName = document.createElement('td');
+      cellText(tdName, s.name);
+      tr.appendChild(tdName);
+
+      var tdContact = document.createElement('td');
+      cellText(tdContact, s.contact);
+      tr.appendChild(tdContact);
+
+      var tdRole = document.createElement('td');
+      var rolePill = document.createElement('span');
+      rolePill.className = 'pill role';
+      rolePill.textContent = s.role || 'other';
+      tdRole.appendChild(rolePill);
+      tr.appendChild(tdRole);
+
+      var tdCity = document.createElement('td');
+      cellText(tdCity, s.city === 'Other' && s.cityOther ? s.cityOther : s.city);
+      tr.appendChild(tdCity);
+
+      var tdProblem = document.createElement('td');
+      tdProblem.className = 'problem-cell';
+      tdProblem.textContent = s.problem || s.error || '—';
+      tr.appendChild(tdProblem);
+
+      var tdInterested = document.createElement('td');
+      if (s.interested) {
+        var pill = document.createElement('span');
+        pill.className = 'pill interested';
+        pill.textContent = 'Yes';
+        tdInterested.appendChild(pill);
+      } else {
+        tdInterested.textContent = '—';
+      }
+      tr.appendChild(tdInterested);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  function updateStats(){
+    document.getElementById('stat-total').textContent = allSubmissions.length;
+    document.getElementById('stat-interested').textContent = allSubmissions.filter(function(s){ return s.interested; }).length;
+    document.getElementById('stat-shopkeepers').textContent = allSubmissions.filter(function(s){ return s.role === 'shopkeeper'; }).length;
+    document.getElementById('stat-customers').textContent = allSubmissions.filter(function(s){ return s.role === 'customer'; }).length;
+  }
+
+  function csvEscape(value){
+    var str = String(value == null ? '' : value);
+    if (/[",\n]/.test(str)) return '"' + str.replace(/"/g, '""') + '"';
+    return str;
+  }
+
+  function exportCsv(){
+    var headers = ['createdAt', 'name', 'contact', 'role', 'city', 'cityOther', 'problem', 'interested'];
+    var lines = [headers.join(',')];
+    allSubmissions.forEach(function(s){
+      lines.push(headers.map(function(h){ return csvEscape(s[h]); }).join(','));
+    });
+    var blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'sakhyakirana-submissions.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function loadSubmissions(){
+    var res = await fetch('/api/submissions');
+    if (res.status === 401) {
+      showLogin();
+      return;
+    }
+    var data = await res.json();
+    allSubmissions = data.submissions || [];
+    showDashboard();
+    updateStats();
+    renderRows();
+  }
+
+  loginForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    loginMsg.textContent = '';
+    loginMsg.className = 'form-msg';
+    var password = document.getElementById('password').value;
+    try {
+      var res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password }),
+      });
+      var data = await res.json().catch(function(){ return {}; });
+      if (!res.ok) throw new Error(data.error || 'Login failed.');
+      document.getElementById('password').value = '';
+      await loadSubmissions();
+    } catch (err) {
+      loginMsg.textContent = err.message;
+      loginMsg.classList.add('error');
+    }
+  });
+
+  logoutBtn.addEventListener('click', async function(){
+    await fetch('/api/admin/logout', { method: 'POST' });
+    allSubmissions = [];
+    showLogin();
+  });
+
+  searchInput.addEventListener('input', renderRows);
+  cityFilter.addEventListener('change', renderRows);
+  interestedFilter.addEventListener('change', renderRows);
+  exportBtn.addEventListener('click', exportCsv);
+
+  loadSubmissions();
+})();
+</script>
+
+</body>
+</html>
