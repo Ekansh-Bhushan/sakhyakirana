@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Problem Statement — SakhyaKirana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --clay:#C24A2C; --clay-dark:#A83E22; --ink:#1F3A52; --ink-light:#345A7A;
+    --gold:#E8A23A; --paper:#FBF3E6; --paper-deep:#F3E7D4; --charcoal:#2B2320;
+    --charcoal-soft:#5B4F48; --line: rgba(43,35,32,0.12); --green:#3F6B4C;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--paper); color:var(--charcoal); font-family:'Inter',sans-serif; line-height:1.6;}
+  h1,h2,h3,.display{font-family:'Baloo 2',sans-serif; font-weight:700; color:var(--charcoal); line-height:1.15;}
+  .wrap{max-width:980px; margin:0 auto; padding:0 28px;}
+  a{color:inherit;}
+
+  header{padding:26px 0; border-bottom:1px solid var(--line);}
+  header .wrap{display:flex; align-items:center; justify-content:space-between;}
+  .brand{display:flex; align-items:center; gap:10px; font-family:'Baloo 2'; font-weight:700; font-size:20px;}
+  .brand svg{flex-shrink:0;}
+  .tag-pill{font-size:12.5px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase; color:var(--clay-dark); background:var(--paper-deep); padding:6px 14px; border-radius:100px; border:1px solid var(--line);}
+
+  .hero{padding:64px 0 40px;}
+  .hero .kicker{font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--clay); margin-bottom:14px;}
+  .hero h1{font-size:clamp(30px,4.4vw,48px); max-width:760px; letter-spacing:-0.5px;}
+  .hero p{font-size:17.5px; color:var(--charcoal-soft); max-width:680px; margin-top:18px;}
+
+  section{padding:52px 0; border-bottom:1px solid var(--line);}
+  section:last-of-type{border-bottom:none;}
+  .section-label{font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--clay); margin-bottom:8px;}
+  section h2{font-size:clamp(24px,3.2vw,32px); margin-bottom:20px; letter-spacing:-0.3px;}
+
+  /* stat grid */
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-top:8px;}
+  @media (max-width:800px){ .stat-grid{grid-template-columns:1fr 1fr;} }
+  .stat-card{background:#fff; border:1px solid var(--line); border-radius:18px; padding:24px 20px;}
+  .stat-num{font-family:'Baloo 2'; font-weight:700; font-size:32px; color:var(--ink);}
+  .stat-label{font-size:13.5px; color:var(--charcoal-soft); margin-top:8px; line-height:1.45;}
+  .source-note{font-size:12.5px; color:var(--charcoal-soft); margin-top:16px; opacity:0.8;}
+
+  /* field research callout */
+  .field-box{
+    background:var(--ink); color:var(--paper); border-radius:26px; padding:40px;
+  }
+  .field-box .loc{
+    display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.4px; background:rgba(255,255,255,0.12);
+    padding:6px 14px; border-radius:100px; margin-bottom:18px;
+  }
+  .field-box .loc .dot{width:6px; height:6px; border-radius:50%; background:var(--gold);}
+  .field-box p.note{opacity:0.82; font-size:15px; max-width:640px; margin-bottom:28px;}
+  .finding-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:18px;}
+  @media (max-width:760px){ .finding-grid{grid-template-columns:1fr;} }
+  .finding{background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.14); border-radius:18px; padding:22px;}
+  .finding .num{font-family:'Baloo 2'; font-size:26px; font-weight:700; color:var(--gold); margin-bottom:8px;}
+  .finding h3{color:#fff; font-size:17px; margin-bottom:8px;}
+  .finding p{font-size:14px; opacity:0.82;}
+
+  /* gap comparison */
+  .gap-table{width:100%; border-collapse:collapse; margin-top:8px; background:#fff; border-radius:18px; overflow:hidden; border:1px solid var(--line);}
+  .gap-table th, .gap-table td{padding:16px 18px; text-align:left; font-size:14.5px; border-bottom:1px solid var(--line);}
+  .gap-table th{background:var(--paper-deep); font-family:'Baloo 2'; font-weight:600; font-size:14.5px;}
+  .gap-table tr:last-child td{border-bottom:none;}
+  .gap-table td.yes{color:var(--green); font-weight:600;}
+  .gap-table td.no{color:var(--clay-dark); font-weight:600;}
+  .gap-table td.partial{color:#9C7A1F; font-weight:600;}
+  .gap-table tr.ours{background:#FBF3E680;}
+  .gap-table tr.ours td:first-child{font-weight:700;}
+
+  /* PS statement */
+  .ps-box{
+    background:linear-gradient(160deg,#CB5535,#A83E22); color:var(--paper);
+    border-radius:26px; padding:44px; text-align:center;
+  }
+  .ps-box .section-label{color:var(--gold);}
+  .ps-box p{font-family:'Baloo 2'; font-weight:600; font-size:clamp(20px,2.6vw,27px); line-height:1.4; max-width:760px; margin:0 auto;}
+
+  /* direction */
+  .direction-list{display:flex; flex-direction:column; gap:16px; margin-top:8px;}
+  .direction-item{display:flex; gap:16px; align-items:flex-start; background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px 22px;}
+  .direction-item .idx{font-family:'Baloo 2'; font-weight:700; color:var(--clay); font-size:18px; flex-shrink:0;}
+  .direction-item h3{font-size:16px; margin-bottom:4px;}
+  .direction-item p{font-size:14.5px; color:var(--charcoal-soft);}
+
+  footer{padding:36px 0; text-align:center;}
+  footer p{font-size:13px; color:var(--charcoal-soft);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 400 400">
+        <rect x="20" y="20" width="360" height="360" rx="88" ry="88" fill="#C24A2C"/>
+        <path d="M 262 128 C 262 100 216 88 182 100 C 148 112 140 145 160 168 C 185 197 245 195 258 222 C 272 250 255 282 215 288 C 178 293 150 275 142 250" stroke="#FBF3E6" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="140" cy="246" r="20" fill="#E8A23A"/>
+      </svg>
+      SakhyaKirana
+    </div>
+    <div class="tag-pill">Problem Statement</div>
+  </div>
+</header>
+
+<main>
+  <section class="hero" style="border-bottom:none;">
+    <div class="wrap">
+      <div class="kicker">Why we're building this</div>
+      <h1>Delhi's kirana stores aren't losing to quick-commerce because they won't change. They're losing because no one has time.</h1>
+      <p>This problem statement is built on national industry data and our own in-person field survey of kirana store owners in Rohini Sector 17, Delhi — conducted in August 2026.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-label">The market signal</div>
+      <h2>What industry data already tells us</h2>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-num">~40%</div>
+          <div class="stat-label">of kirana owners are actively looking to partner with delivery, billing, or supply-chain tech platforms</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">30–50%</div>
+          <div class="stat-label">of daily transactions at modernising kirana stores now happen via UPI/QR digital payments</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">↑</div>
+          <div class="stat-label">Stores adopting digital POS and inventory workflows show measurable jumps in efficiency and repeat customers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">↓</div>
+          <div class="stat-label">Zepto and Blinkit are visibly denting local footfall — stores are responding with WhatsApp ordering and ledger apps</div>
+        </div>
+      </div>
+      <div class="source-note">Sources: industry survey reports (incl. EY India), Invest India retail transformation data, and academic assessments of urban grocery shifts in Delhi and Pune, as compiled for this study.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-label">Our field research</div>
+      <h2>What shopkeepers actually told us</h2>
+      <div class="field-box">
+        <div class="loc"><span class="dot"></span> Rohini Sector 17, Delhi — August 2026</div>
+        <p class="note">Store owners were largely too busy to engage at first — several only opened up after being offered sweets. That reluctance turned out to be data in itself: it's the clearest sign of how stretched for time these shopkeepers already are.</p>
+        <div class="finding-grid">
+          <div class="finding">
+            <div class="num">#1</div>
+            <h3>Labour shortage</h3>
+            <p>The problem named most often, unprompted. Owners can't find hands to run the shop — let alone spare time to learn new systems.</p>
+          </div>
+          <div class="finding">
+            <div class="num">~20%</div>
+            <h3>Revenue lost to quick-commerce</h3>
+            <p>Store owners estimated losing roughly 20% of revenue to Blinkit and Zepto specifically.</p>
+          </div>
+          <div class="finding">
+            <div class="num">#2</div>
+            <h3>Inventory is difficult</h3>
+            <p>Several owners flagged stock-tracking as a real pain point — closely tied to not having enough hands to manage it.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-label">The gap</div>
+      <h2>What existing tools actually solve</h2>
+      <table class="gap-table">
+        <tr>
+          <th>Tool</th>
+          <th>Online ordering</th>
+          <th>Billing / GST</th>
+          <th>Credit (khata)</th>
+          <th>Inventory tracking</th>
+          <th>Reduces labour</th>
+        </tr>
+        <tr>
+          <td>KiranaOS</td>
+          <td class="yes">Yes</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+          <td class="no">No</td>
+          <td class="partial">Partial</td>
+        </tr>
+        <tr>
+          <td>Vyapar / Khatabook / OkCredit</td>
+          <td class="no">No</td>
+          <td class="yes">Yes</td>
+          <td class="yes">Yes</td>
+          <td class="partial">Manual entry</td>
+          <td class="no">No — adds a task</td>
+        </tr>
+        <tr class="ours">
+          <td>What's missing</td>
+          <td colspan="4">A way to track stock with near-zero manual effort — and let that same data power customer ordering</td>
+          <td class="yes">This is the wedge</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-label">Our problem statement</div>
+      <div class="ps-box">
+        <p>"Kirana store owners in urban India are losing revenue to quick-commerce not because they resist technology, but because they lack the labour to manage inventory and orders manually — and no existing tool reduces that daily workload rather than adding to it."</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="border-bottom:none;">
+    <div class="wrap">
+      <div class="section-label">Where we start</div>
+      <h2>The narrowest useful thing</h2>
+      <div class="direction-list">
+        <div class="direction-item">
+          <div class="idx">1</div>
+          <div><h3>Stock that updates itself</h3><p>Inventory decreases automatically as a bill is made — no separate "update stock" task added to an already short-staffed day.</p></div>
+        </div>
+        <div class="direction-item">
+          <div class="idx">2</div>
+          <div><h3>Customer ordering, powered by real stock data</h3><p>Only once stock data is trustworthy do we turn on customer-facing ordering — so the shop never promises something it doesn't have.</p></div>
+        </div>
+        <div class="direction-item">
+          <div class="idx">3</div>
+          <div><h3>Nothing new to learn</h3><p>If it takes training, it adds labour instead of saving it. The bar for every feature: does this remove a manual task, or add one?</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Problem statement compiled from primary field research (Rohini Sector 17, Delhi, Aug 2026) and secondary industry data. Prepared for internal and public review.</p>
+  </div>
+</footer>
+
+</body>
+</html>
