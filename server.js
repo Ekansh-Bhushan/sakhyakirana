@@ -15,6 +15,12 @@ const PORT = process.env.PORT || 3000;
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
+// Chrome caps cookie lifetime at 400 days, so anything longer is silently
+// clamped — a returning visitor is only recognised as "returning" this long.
+const VISITOR_COOKIE_TTL_SECONDS = 400 * 24 * 60 * 60;
+// Day boundaries for "today" in the admin panel are computed in this zone.
+const ANALYTICS_TIMEZONE = (process.env.ANALYTICS_TIMEZONE || 'Asia/Kolkata').trim();
+
 // KEY_FILE / SESSION_SECRET_FILE below are a local-dev convenience only — most
 // cloud hosts wipe the filesystem on every redeploy, which would silently
 // rotate these and (for the encryption key) make already-stored rows
@@ -177,9 +183,61 @@ function sessionCookie(token, maxAgeSeconds) {
   return parts.join('; ');
 }
 
+// ---------- Visitor tracking ----------
+// Deliberately minimal: an opaque random ID in a cookie, plus the referring
+// host and a coarse device class. No IP addresses, no user-agent strings and
+// no third-party analytics script, so there is nothing here that identifies a
+// person or leaves this server.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const BOT_UA_RE = /(bot|crawler|crawl|spider|slurp|headless|phantom|monitor|uptime|pingdom|lighthouse|curl|wget|python-requests|axios|okhttp|go-http-client|facebookexternalhit|whatsapp|telegram|preview|semrush|ahrefs|mj12|dataprovider)/i;
+
+function visitorCookie(id) {
+  const parts = [
+    `sk_vid=${id}`,
+    'HttpOnly',
+    'SameSite=Lax',
+    'Path=/',
+    `Max-Age=${VISITOR_COOKIE_TTL_SECONDS}`,
+  ];
+  if (IS_PRODUCTION) parts.push('Secure');
+  return parts.join('; ');
+}
+
+function looksLikeBot(userAgent) {
+  return !userAgent || BOT_UA_RE.test(userAgent);
+}
+
+function deviceClass(userAgent) {
+  if (/ipad|tablet|playbook|silk|(android(?!.*mobile))/i.test(userAgent)) return 'tablet';
+  if (/mobi|iphone|ipod|windows phone|blackberry/i.test(userAgent)) return 'mobile';
+  return 'desktop';
+}
+
+// The admin panel is excluded so the owner checking their own stats doesn't
+// inflate the visitor numbers they're reading.
+function trackablePath(value) {
+  if (typeof value !== 'string' || !value.startsWith('/')) return '';
+  const clean = value.split('?')[0].split('#')[0].slice(0, 200);
+  if (clean.startsWith('/admin')) return '';
+  return clean;
+}
+
+function referrerHost(value, ownHost) {
+  if (typeof value !== 'string' || !value) return '';
+  try {
+    const host = new URL(value).hostname.replace(/^www\./, '');
+    // Navigation within the site isn't a traffic source.
+    if (!host || host === String(ownHost || '').split(':')[0].replace(/^www\./, '')) return '';
+    return host.slice(0, 120);
+  } catch {
+    return '';
+  }
+}
+
 // ---------- Rate limiting (in-memory, best-effort for a single-process prototype) ----------
 const submissionHits = new Map();
 const loginHits = new Map();
+const trackHits = new Map();
 
 function rateLimited(map, key, max, windowMs) {
   const now = Date.now();
@@ -192,6 +250,18 @@ function rateLimited(map, key, max, windowMs) {
 function clientIp(req) {
   return req.socket.remoteAddress || 'unknown';
 }
+
+// Without this the maps grow one entry per IP forever. /api/track is hit by
+// every page load, so it's the one that would actually add up over time.
+const RATE_LIMIT_SWEEP_MS = 30 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now();
+  [submissionHits, loginHits, trackHits].forEach((map) => {
+    map.forEach((hits, key) => {
+      if (!hits.some((t) => now - t < RATE_LIMIT_SWEEP_MS)) map.delete(key);
+    });
+  });
+}, RATE_LIMIT_SWEEP_MS).unref();
 
 // ---------- Body parsing ----------
 function readJsonBody(req, maxBytes = 100 * 1024) {
@@ -263,6 +333,11 @@ function sendJson(res, status, obj, method) {
   res.end(method === 'HEAD' ? undefined : body);
 }
 
+function sendNoContent(res) {
+  res.writeHead(204, { 'X-Content-Type-Options': 'nosniff' });
+  res.end();
+}
+
 function sendFile(res, filePath, contentType, method) {
   fs.readFile(filePath, (err, data) => {
     if (err) {
@@ -326,6 +401,52 @@ const server = http.createServer(async (req, res) => {
       };
       await db.insertSubmission(record);
       return sendJson(res, 201, { ok: true });
+    }
+
+    // Always answers 204, even when it records nothing — a visitor's page must
+    // never show an error or slow down because analytics had a bad day.
+    if (req.method === 'POST' && url.pathname === '/api/track') {
+      const userAgent = req.headers['user-agent'] || '';
+      let body = {};
+      try {
+        body = await readJsonBody(req, 4 * 1024);
+      } catch {
+        body = {};
+      }
+
+      if (looksLikeBot(userAgent) || rateLimited(trackHits, clientIp(req), 40, 10 * 60 * 1000)) {
+        return sendNoContent(res);
+      }
+
+      const cookies = parseCookies(req);
+      const knownVisitor = UUID_RE.test(cookies.sk_vid || '');
+      const visitorId = knownVisitor ? cookies.sk_vid : crypto.randomUUID();
+      if (!knownVisitor) res.setHeader('Set-Cookie', visitorCookie(visitorId));
+
+      const viewPath = trackablePath(body.path);
+      if (viewPath && (await isDbReady())) {
+        try {
+          await db.recordPageView({
+            visitorId,
+            path: viewPath,
+            isNewVisitor: !knownVisitor,
+            referrerHost: referrerHost(body.referrer, req.headers.host),
+            device: deviceClass(userAgent),
+          });
+        } catch (err) {
+          console.error('[sakhyakirana] Could not record a page view:', err.message);
+        }
+      }
+      return sendNoContent(res);
+    }
+
+    if (isGettable(req.method) && url.pathname === '/api/admin/analytics') {
+      if (!isAuthedAdmin(req)) return sendJson(res, 401, { error: 'Not authenticated.' }, req.method);
+      if (!(await isDbReady())) {
+        return sendJson(res, 503, { error: 'Database is warming up, please try again in a few seconds.' }, req.method);
+      }
+      const analytics = await db.getAnalytics(ANALYTICS_TIMEZONE);
+      return sendJson(res, 200, { ...analytics, timezone: ANALYTICS_TIMEZONE }, req.method);
     }
 
     if (req.method === 'POST' && url.pathname === '/api/admin/login') {

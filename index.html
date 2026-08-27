@@ -467,6 +467,18 @@
       submitBtn.disabled = false;
     }
   });
+
+  // ---------- visit tracking ----------
+  // Fire-and-forget on purpose: nothing on the page waits for this, and any
+  // failure (offline, blocked request, server down) is swallowed silently.
+  try {
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: location.pathname, referrer: document.referrer }),
+      keepalive: true,
+    }).catch(function(){});
+  } catch (err) { /* very old browser without fetch — not worth a fallback */ }
 })();
 </script>
 

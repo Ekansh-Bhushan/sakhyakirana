@@ -88,6 +88,32 @@
   .stat-card{background:var(--card-bg); border:1px solid var(--line); border-radius:16px; padding:18px 20px;}
   .stat-num{font-family:'Baloo 2'; font-weight:700; font-size:26px; color:var(--ink-light);}
   .stat-label{font-size:12.5px; color:var(--text-soft); margin-top:4px;}
+  .stat-sub{font-size:11.5px; color:var(--text-soft); opacity:0.85; margin-top:2px;}
+
+  /* visitors */
+  .section-head{display:flex; align-items:baseline; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:16px;}
+  .section-head h2{font-size:21px;}
+  .muted{font-size:12.5px; color:var(--text-soft);}
+  .live-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--pos); margin-right:6px; vertical-align:middle;}
+  .panel{background:var(--card-bg); border:1px solid var(--line); border-radius:16px; padding:20px 22px;}
+  .panel h3{font-family:'Baloo 2'; font-weight:600; font-size:15px;}
+  .panel-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;}
+  @media (max-width:760px){ .panel-grid{grid-template-columns:1fr;} }
+
+  .chart{display:flex; align-items:flex-end; gap:3px; height:150px; margin-top:18px;}
+  .chart .bar{flex:1 1 0; min-width:3px; min-height:2px; border-radius:3px 3px 0 0; background:var(--ink-light); opacity:0.8;}
+  .chart .bar:hover{background:var(--clay); opacity:1;}
+  .chart .bar.empty{background:var(--line); opacity:1;}
+  .chart-axis{display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-soft); margin-top:8px;}
+
+  .mini-table{width:100%; min-width:0; border-collapse:collapse; margin-top:6px;}
+  .mini-table th, .mini-table td{padding:9px 0; font-size:13.5px; border-bottom:1px solid var(--line);}
+  .mini-table th{background:none; padding:9px 0;}
+  .mini-table td:last-child, .mini-table th:last-child{text-align:right;}
+  .mini-table tr:last-child td{border-bottom:none;}
+  .mini-empty{font-size:13.5px; color:var(--text-soft); padding:14px 0;}
+
+  .divider{height:1px; background:var(--line); margin:44px 0;}
 
   .controls{display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px; align-items:center;}
   .controls input[type="search"], .controls select{
@@ -156,6 +182,67 @@
     </div>
 
     <div id="dashboard-view" hidden>
+      <div class="top-bar">
+        <h1>Visitors</h1>
+        <div class="muted" id="visitors-updated"></div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-num" id="stat-active">0</div>
+          <div class="stat-label"><span class="live-dot"></span>Reading right now</div>
+          <div class="stat-sub">last 5 minutes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-visitors-today">0</div>
+          <div class="stat-label">Visitors today</div>
+          <div class="stat-sub" id="stat-views-today">0 page opens</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-visitors-7d">0</div>
+          <div class="stat-label">Visitors this week</div>
+          <div class="stat-sub" id="stat-views-7d">0 page opens</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-visitors-total">0</div>
+          <div class="stat-label">Visitors all time</div>
+          <div class="stat-sub" id="stat-views-total">0 page opens</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="section-head">
+          <h3>Daily visitors — last 30 days</h3>
+          <div class="muted" id="chart-peak"></div>
+        </div>
+        <div class="chart" id="visitors-chart"></div>
+        <div class="chart-axis">
+          <span id="chart-start"></span>
+          <span id="chart-end"></span>
+        </div>
+      </div>
+
+      <div class="panel-grid">
+        <div class="panel">
+          <h3>Where they came from</h3>
+          <table class="mini-table" id="sources-table">
+            <thead><tr><th>Source</th><th>Visitors</th></tr></thead>
+            <tbody id="sources-body"></tbody>
+          </table>
+          <div class="mini-empty" id="sources-empty" hidden>No visits recorded yet.</div>
+        </div>
+        <div class="panel">
+          <h3>Device</h3>
+          <table class="mini-table" id="devices-table">
+            <thead><tr><th>Type</th><th>Visitors</th></tr></thead>
+            <tbody id="devices-body"></tbody>
+          </table>
+          <div class="mini-empty" id="devices-empty" hidden>No visits recorded yet.</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
       <div class="top-bar">
         <h1>Submissions</h1>
         <button class="btn" id="export-btn">Export CSV</button>
@@ -249,11 +336,95 @@
     loginView.hidden = false;
     dashboardView.hidden = true;
     logoutBtn.hidden = true;
+    stopAnalyticsPolling();
   }
   function showDashboard(){
     loginView.hidden = true;
     dashboardView.hidden = false;
     logoutBtn.hidden = false;
+    loadAnalytics();
+    startAnalyticsPolling();
+  }
+
+  // ---------- visitors ----------
+  var analyticsTimer = null;
+
+  function fmt(n){ return Number(n || 0).toLocaleString(); }
+
+  // 'YYYY-MM-DD' is parsed as UTC by the Date constructor, which can render as
+  // the previous day west of Greenwich — build the date from its parts instead.
+  function dayLabel(iso){
+    var p = String(iso).split('-');
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  }
+
+  function renderMiniTable(rows, bodyEl, emptyEl, labelKey, valueKey){
+    bodyEl.innerHTML = '';
+    emptyEl.hidden = rows.length > 0;
+    rows.forEach(function(row){
+      var tr = document.createElement('tr');
+      var tdLabel = document.createElement('td');
+      var label = String(row[labelKey] || 'unknown');
+      tdLabel.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+      var tdValue = document.createElement('td');
+      tdValue.textContent = fmt(row[valueKey]);
+      tr.appendChild(tdLabel);
+      tr.appendChild(tdValue);
+      bodyEl.appendChild(tr);
+    });
+  }
+
+  function renderAnalytics(data){
+    var t = data.totals || {};
+    document.getElementById('stat-active').textContent = fmt(t.visitorsActive);
+    document.getElementById('stat-visitors-today').textContent = fmt(t.visitorsToday);
+    document.getElementById('stat-views-today').textContent = fmt(t.viewsToday) + ' page opens';
+    document.getElementById('stat-visitors-7d').textContent = fmt(t.visitors7d);
+    document.getElementById('stat-views-7d').textContent = fmt(t.views7d) + ' page opens';
+    document.getElementById('stat-visitors-total').textContent = fmt(t.totalVisitors);
+    document.getElementById('stat-views-total').textContent = fmt(t.totalViews) + ' page opens';
+
+    document.getElementById('visitors-updated').textContent = t.lastViewAt
+      ? 'Most recent visit ' + new Date(t.lastViewAt).toLocaleString()
+      : 'No visits recorded yet';
+
+    var daily = data.daily || [];
+    var peak = daily.reduce(function(max, d){ return Math.max(max, d.visitors); }, 0);
+    var chart = document.getElementById('visitors-chart');
+    chart.innerHTML = '';
+    daily.forEach(function(d){
+      var bar = document.createElement('div');
+      bar.className = d.visitors ? 'bar' : 'bar empty';
+      bar.style.height = d.visitors ? Math.max(4, Math.round((d.visitors / peak) * 100)) + '%' : '3px';
+      bar.title = dayLabel(d.day) + ' — ' + fmt(d.visitors) + ' visitors, ' + fmt(d.views) + ' page opens';
+      chart.appendChild(bar);
+    });
+    document.getElementById('chart-peak').textContent = peak ? 'Busiest day: ' + fmt(peak) + ' visitors' : '';
+    document.getElementById('chart-start').textContent = daily.length ? dayLabel(daily[0].day) : '';
+    document.getElementById('chart-end').textContent = daily.length ? dayLabel(daily[daily.length - 1].day) : '';
+
+    renderMiniTable(data.sources || [], document.getElementById('sources-body'), document.getElementById('sources-empty'), 'source', 'visitors');
+    renderMiniTable(data.devices || [], document.getElementById('devices-body'), document.getElementById('devices-empty'), 'device', 'visitors');
+  }
+
+  async function loadAnalytics(){
+    try {
+      var res = await fetch('/api/admin/analytics');
+      if (!res.ok) return;
+      renderAnalytics(await res.json());
+    } catch (err) {
+      // Keep the numbers already on screen rather than blanking the dashboard.
+    }
+  }
+
+  function startAnalyticsPolling(){
+    if (analyticsTimer) return;
+    analyticsTimer = setInterval(loadAnalytics, 60 * 1000);
+  }
+  function stopAnalyticsPolling(){
+    if (analyticsTimer) clearInterval(analyticsTimer);
+    analyticsTimer = null;
   }
 
   function cellText(td, value){
