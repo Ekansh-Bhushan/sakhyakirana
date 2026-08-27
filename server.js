@@ -309,6 +309,15 @@ function formatLocation(city, country) {
   return parts.join(', ');
 }
 
+function decorateVisit(row) {
+  return {
+    ...row,
+    location: row.city === 'Local / private network'
+      ? 'Local / private network'
+      : (formatLocation(row.city, row.country) || 'Unknown'),
+  };
+}
+
 function lookupGeo(ip) {
   if (!ip || isPrivateIp(ip)) {
     return { country: '', region: '', city: ip ? 'Local / private network' : '' };
@@ -528,13 +537,20 @@ const server = http.createServer(async (req, res) => {
         visitors: row.visitors,
         views: row.views,
       }));
-      analytics.recent = (analytics.recent || []).map((row) => ({
-        ...row,
-        location: row.city === 'Local / private network'
-          ? 'Local / private network'
-          : (formatLocation(row.city, row.country) || 'Unknown'),
-      }));
+      analytics.recent = (analytics.recent || []).map(decorateVisit);
       return sendJson(res, 200, { ...analytics, timezone: ANALYTICS_TIMEZONE }, req.method);
+    }
+
+    if (isGettable(req.method) && url.pathname === '/api/admin/visits') {
+      if (!isAuthedAdmin(req)) return sendJson(res, 401, { error: 'Not authenticated.' }, req.method);
+      if (!(await isDbReady())) {
+        return sendJson(res, 503, { error: 'Database is warming up, please try again in a few seconds.' }, req.method);
+      }
+      const page = await db.listRecentPageViews(url.searchParams.get('limit'), url.searchParams.get('offset'));
+      return sendJson(res, 200, {
+        visits: page.visits.map(decorateVisit),
+        total: page.total,
+      }, req.method);
     }
 
     if (req.method === 'POST' && url.pathname === '/api/admin/login') {

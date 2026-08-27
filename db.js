@@ -186,15 +186,10 @@ async function getAnalytics(timeZone = 'UTC', days = 30) {
          COUNT(DISTINCT visitor_id)::int AS visitors
        FROM page_views
        GROUP BY 1, 2
-       ORDER BY visitors DESC, views DESC
-       LIMIT 15`
+       ORDER BY views DESC, visitors DESC
+       LIMIT 5`
     ),
-    pool.query(
-      `SELECT created_at, ip, country, region, city, device, referrer_host, is_new_visitor
-       FROM page_views
-       ORDER BY created_at DESC
-       LIMIT 50`
-    ),
+    listRecentPageViews(10, 0),
   ]);
 
   const t = totals.rows[0] || {};
@@ -214,16 +209,40 @@ async function getAnalytics(timeZone = 'UTC', days = 30) {
     sources: sources.rows,
     devices: devices.rows,
     regions: regions.rows,
-    recent: recent.rows.map((r) => ({
-      createdAt: r.created_at.toISOString(),
-      ip: r.ip || '',
-      country: r.country || '',
-      region: r.region || '',
-      city: r.city || '',
-      device: r.device || '',
-      referrerHost: r.referrer_host || '',
-      isNewVisitor: Boolean(r.is_new_visitor),
-    })),
+    recent: recent.visits,
+    recentTotal: recent.total,
+  };
+}
+
+function mapPageView(r) {
+  return {
+    createdAt: r.created_at.toISOString(),
+    ip: r.ip || '',
+    country: r.country || '',
+    region: r.region || '',
+    city: r.city || '',
+    device: r.device || '',
+    referrerHost: r.referrer_host || '',
+    isNewVisitor: Boolean(r.is_new_visitor),
+  };
+}
+
+async function listRecentPageViews(limit = 10, offset = 0) {
+  const safeLimit = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
+  const safeOffset = Math.max(0, parseInt(offset, 10) || 0);
+  const [list, count] = await Promise.all([
+    pool.query(
+      `SELECT created_at, ip, country, region, city, device, referrer_host, is_new_visitor
+       FROM page_views
+       ORDER BY created_at DESC, id DESC
+       LIMIT $1 OFFSET $2`,
+      [safeLimit, safeOffset]
+    ),
+    pool.query('SELECT COUNT(*)::int AS total FROM page_views'),
+  ]);
+  return {
+    visits: list.rows.map(mapPageView),
+    total: count.rows[0] ? count.rows[0].total : 0,
   };
 }
 
@@ -234,4 +253,5 @@ module.exports = {
   listSubmissions,
   recordPageView,
   getAnalytics,
+  listRecentPageViews,
 };

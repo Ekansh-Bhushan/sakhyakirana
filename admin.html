@@ -97,13 +97,17 @@
   .live-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--pos); margin-right:6px; vertical-align:middle;}
   .panel{background:var(--card-bg); border:1px solid var(--line); border-radius:16px; padding:20px 22px;}
   .panel h3{font-family:'Baloo 2'; font-weight:600; font-size:15px;}
-  .panel-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:16px;}
-  @media (max-width:960px){ .panel-grid{grid-template-columns:1fr 1fr;} }
+  .panel-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;}
   @media (max-width:760px){ .panel-grid{grid-template-columns:1fr;} }
 
-  .visits-table{margin-top:16px;}
+  .visits-head{margin-top:20px;}
   .visits-table table{min-width:680px;}
+  .summary-table table{min-width:520px;}
+  .summary-table td:first-child, .summary-table th:first-child{width:48px;}
+  .summary-table td:nth-child(n+3), .summary-table th:nth-child(n+3){text-align:right; white-space:nowrap;}
   td.ip-cell{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; white-space:nowrap;}
+  .load-more-wrap{display:flex; justify-content:center; padding:16px 0 4px;}
+  .load-more-wrap .btn{min-width:140px;}
 
   .chart{display:flex; align-items:flex-end; gap:3px; height:150px; margin-top:18px;}
   .chart .bar{flex:1 1 0; min-width:3px; min-height:2px; border-radius:3px 3px 0 0; background:var(--ink-light); opacity:0.8;}
@@ -244,16 +248,32 @@
           </table>
           <div class="mini-empty" id="devices-empty" hidden>No visits recorded yet.</div>
         </div>
-        <div class="panel">
-          <h3>Region</h3>
-          <table class="mini-table" id="regions-table">
-            <thead><tr><th>Place</th><th>Visitors</th></tr></thead>
-            <tbody id="regions-body"></tbody>
-          </table>
-          <div class="mini-empty" id="regions-empty" hidden>No visits recorded yet.</div>
-        </div>
       </div>
 
+      <div class="section-head visits-head">
+        <h3>Top regions</h3>
+        <div class="muted">Highest page opens from the same place</div>
+      </div>
+      <div class="table-wrap summary-table">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Region</th>
+              <th>Page opens</th>
+              <th>Visitors</th>
+              <th>Share</th>
+            </tr>
+          </thead>
+          <tbody id="top-regions-body"></tbody>
+        </table>
+        <div class="empty-state" id="top-regions-empty" hidden>No visits recorded yet.</div>
+      </div>
+
+      <div class="section-head visits-head">
+        <h3>Latest visits</h3>
+        <div class="muted" id="visits-count"></div>
+      </div>
       <div class="table-wrap visits-table">
         <table>
           <thead>
@@ -268,6 +288,9 @@
           <tbody id="recent-body"></tbody>
         </table>
         <div class="empty-state" id="recent-empty" hidden>No visits recorded yet.</div>
+      </div>
+      <div class="load-more-wrap">
+        <button class="btn" id="load-more-visits" type="button" hidden>Load more</button>
       </div>
 
       <div class="divider"></div>
@@ -366,6 +389,7 @@
     dashboardView.hidden = true;
     logoutBtn.hidden = true;
     stopAnalyticsPolling();
+    resetVisitsTable();
   }
   function showDashboard(){
     loginView.hidden = true;
@@ -404,6 +428,39 @@
     });
   }
 
+  function renderTopRegions(rows, totalViews){
+    var body = document.getElementById('top-regions-body');
+    var empty = document.getElementById('top-regions-empty');
+    body.innerHTML = '';
+    empty.hidden = rows.length > 0;
+    rows.forEach(function(row, i){
+      var tr = document.createElement('tr');
+
+      var tdRank = document.createElement('td');
+      tdRank.textContent = String(i + 1);
+      tr.appendChild(tdRank);
+
+      var tdLoc = document.createElement('td');
+      tdLoc.textContent = row.location || 'Unknown';
+      tr.appendChild(tdLoc);
+
+      var tdViews = document.createElement('td');
+      tdViews.textContent = fmt(row.views);
+      tr.appendChild(tdViews);
+
+      var tdVisitors = document.createElement('td');
+      tdVisitors.textContent = fmt(row.visitors);
+      tr.appendChild(tdVisitors);
+
+      var tdShare = document.createElement('td');
+      var share = totalViews ? Math.round((Number(row.views) / totalViews) * 100) : 0;
+      tdShare.textContent = share + '%';
+      tr.appendChild(tdShare);
+
+      body.appendChild(tr);
+    });
+  }
+
   function renderAnalytics(data){
     var t = data.totals || {};
     document.getElementById('stat-active').textContent = fmt(t.visitorsActive);
@@ -435,15 +492,55 @@
 
     renderMiniTable(data.sources || [], document.getElementById('sources-body'), document.getElementById('sources-empty'), 'source', 'visitors');
     renderMiniTable(data.devices || [], document.getElementById('devices-body'), document.getElementById('devices-empty'), 'device', 'visitors');
-    renderMiniTable(data.regions || [], document.getElementById('regions-body'), document.getElementById('regions-empty'), 'location', 'visitors');
-    renderRecent(data.recent || []);
+    renderTopRegions(data.regions || [], (data.totals && data.totals.totalViews) || 0);
+    if (!visitsReady) {
+      replaceVisits(data.recent || [], data.recentTotal || 0);
+      visitsReady = true;
+    }
   }
 
-  function renderRecent(rows){
+  var VISITS_PAGE = 10;
+  var visitsReady = false;
+  var visitsShown = 0;
+  var visitsTotal = 0;
+  var visitsLoading = false;
+  var loadMoreBtn = document.getElementById('load-more-visits');
+  var visitsCount = document.getElementById('visits-count');
+
+  function resetVisitsTable(){
+    visitsReady = false;
+    visitsShown = 0;
+    visitsTotal = 0;
+    visitsLoading = false;
+    document.getElementById('recent-body').innerHTML = '';
+    document.getElementById('recent-empty').hidden = true;
+    loadMoreBtn.hidden = true;
+    loadMoreBtn.disabled = false;
+    loadMoreBtn.textContent = 'Load more';
+    visitsCount.textContent = '';
+  }
+
+  function syncLoadMore(){
+    if (visitsTotal === 0) {
+      visitsCount.textContent = '';
+    } else {
+      visitsCount.textContent = 'Showing ' + fmt(visitsShown) + ' of ' + fmt(visitsTotal);
+    }
+    loadMoreBtn.hidden = visitsShown >= visitsTotal || visitsTotal === 0;
+    loadMoreBtn.disabled = visitsLoading;
+    loadMoreBtn.textContent = visitsLoading ? 'Loading…' : 'Load more';
+  }
+
+  function replaceVisits(rows, total){
+    document.getElementById('recent-body').innerHTML = '';
+    visitsShown = 0;
+    visitsTotal = total;
+    appendVisitRows(rows);
+  }
+
+  function appendVisitRows(rows){
     var body = document.getElementById('recent-body');
     var empty = document.getElementById('recent-empty');
-    body.innerHTML = '';
-    empty.hidden = rows.length > 0;
     rows.forEach(function(row){
       var tr = document.createElement('tr');
 
@@ -471,6 +568,31 @@
 
       body.appendChild(tr);
     });
+    visitsShown += rows.length;
+    empty.hidden = visitsShown > 0;
+    syncLoadMore();
+  }
+
+  async function loadMoreVisits(){
+    if (visitsLoading || visitsShown >= visitsTotal) return;
+    visitsLoading = true;
+    syncLoadMore();
+    try {
+      var res = await fetch('/api/admin/visits?limit=' + VISITS_PAGE + '&offset=' + visitsShown);
+      if (res.status === 401) {
+        showLogin();
+        return;
+      }
+      if (!res.ok) return;
+      var data = await res.json();
+      visitsTotal = typeof data.total === 'number' ? data.total : visitsTotal;
+      appendVisitRows(data.visits || []);
+    } catch (err) {
+      // Leave the rows already on screen.
+    } finally {
+      visitsLoading = false;
+      syncLoadMore();
+    }
   }
 
   async function loadAnalytics(){
@@ -630,6 +752,7 @@
     showLogin();
   });
 
+  loadMoreBtn.addEventListener('click', loadMoreVisits);
   searchInput.addEventListener('input', renderRows);
   cityFilter.addEventListener('change', renderRows);
   interestedFilter.addEventListener('change', renderRows);
