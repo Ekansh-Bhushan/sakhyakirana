@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const db = require('./db');
+const geoip = require('geoip-lite');
 
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, 'data');
@@ -184,12 +185,20 @@ function sessionCookie(token, maxAgeSeconds) {
 }
 
 // ---------- Visitor tracking ----------
-// Deliberately minimal: an opaque random ID in a cookie, plus the referring
-// host and a coarse device class. No IP addresses, no user-agent strings and
-// no third-party analytics script, so there is nothing here that identifies a
-// person or leaves this server.
+// Opaque visitor cookie, referring host, device class, client IP, and a
+// coarse GeoIP region (country / city). No user-agent strings are stored and
+// nothing is sent to a third-party analytics vendor.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BOT_UA_RE = /(bot|crawler|crawl|spider|slurp|headless|phantom|monitor|uptime|pingdom|lighthouse|curl|wget|python-requests|axios|okhttp|go-http-client|facebookexternalhit|whatsapp|telegram|preview|semrush|ahrefs|mj12|dataprovider)/i;
+const IPV4_RE = /^(?:\d{1,3}\.){3}\d{1,3}$/;
+const IPV6_RE = /^[0-9a-f:]+$/i;
+
+let countryNames;
+try {
+  countryNames = new Intl.DisplayNames(['en'], { type: 'region' });
+} catch {
+  countryNames = null;
+}
 
 function visitorCookie(id) {
   const parts = [
@@ -248,7 +257,69 @@ function rateLimited(map, key, max, windowMs) {
 }
 
 function clientIp(req) {
-  return req.socket.remoteAddress || 'unknown';
+  const candidates = [
+    req.headers['cf-connecting-ip'],
+    req.headers['true-client-ip'],
+    req.headers['x-real-ip'],
+    typeof req.headers['x-forwarded-for'] === 'string'
+      ? req.headers['x-forwarded-for'].split(',')[0]
+      : '',
+    req.socket && req.socket.remoteAddress,
+  ];
+  for (const raw of candidates) {
+    const ip = normalizeIp(raw);
+    if (ip) return ip;
+  }
+  return '';
+}
+
+function normalizeIp(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return '';
+  let ip = raw.trim().replace(/^\[|\]$/g, '');
+  if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+  // IPv4-with-port shows up on some proxies ("1.2.3.4:12345").
+  if (IPV4_RE.test(ip.split(':')[0]) && ip.includes(':') && ip.indexOf(':') === ip.lastIndexOf(':')) {
+    ip = ip.split(':')[0];
+  }
+  if (IPV4_RE.test(ip) || (ip.includes(':') && IPV6_RE.test(ip))) return ip.slice(0, 45);
+  return '';
+}
+
+function isPrivateIp(ip) {
+  if (!ip) return true;
+  if (ip === '::1' || ip === '127.0.0.1') return true;
+  if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('127.')) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(ip)) return true;
+  if (ip.startsWith('fc') || ip.startsWith('fd') || ip.toLowerCase().startsWith('fe80:')) return true;
+  return false;
+}
+
+function countryName(code) {
+  if (!code || code === 'Unknown') return '';
+  try {
+    return (countryNames && countryNames.of(code)) || code;
+  } catch {
+    return code;
+  }
+}
+
+function formatLocation(city, country) {
+  const name = countryName(country);
+  const parts = [city, name].filter(Boolean);
+  return parts.join(', ');
+}
+
+function lookupGeo(ip) {
+  if (!ip || isPrivateIp(ip)) {
+    return { country: '', region: '', city: ip ? 'Local / private network' : '' };
+  }
+  const hit = geoip.lookup(ip);
+  if (!hit) return { country: '', region: '', city: '' };
+  return {
+    country: (hit.country || '').slice(0, 8),
+    region: (hit.region || '').slice(0, 8),
+    city: (hit.city || '').slice(0, 80),
+  };
 }
 
 // Without this the maps grow one entry per IP forever. /api/track is hit by
@@ -426,12 +497,18 @@ const server = http.createServer(async (req, res) => {
       const viewPath = trackablePath(body.path);
       if (viewPath && (await isDbReady())) {
         try {
+          const ip = clientIp(req);
+          const geo = lookupGeo(ip);
           await db.recordPageView({
             visitorId,
             path: viewPath,
             isNewVisitor: !knownVisitor,
             referrerHost: referrerHost(body.referrer, req.headers.host),
             device: deviceClass(userAgent),
+            ip,
+            country: geo.country,
+            region: geo.region,
+            city: geo.city,
           });
         } catch (err) {
           console.error('[sakhyakirana] Could not record a page view:', err.message);
@@ -446,6 +523,17 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 503, { error: 'Database is warming up, please try again in a few seconds.' }, req.method);
       }
       const analytics = await db.getAnalytics(ANALYTICS_TIMEZONE);
+      analytics.regions = (analytics.regions || []).map((row) => ({
+        location: formatLocation(row.city, row.country) || 'Unknown',
+        visitors: row.visitors,
+        views: row.views,
+      }));
+      analytics.recent = (analytics.recent || []).map((row) => ({
+        ...row,
+        location: row.city === 'Local / private network'
+          ? 'Local / private network'
+          : (formatLocation(row.city, row.country) || 'Unknown'),
+      }));
       return sendJson(res, 200, { ...analytics, timezone: ANALYTICS_TIMEZONE }, req.method);
     }
 

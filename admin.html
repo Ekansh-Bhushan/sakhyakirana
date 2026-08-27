@@ -97,8 +97,13 @@
   .live-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--pos); margin-right:6px; vertical-align:middle;}
   .panel{background:var(--card-bg); border:1px solid var(--line); border-radius:16px; padding:20px 22px;}
   .panel h3{font-family:'Baloo 2'; font-weight:600; font-size:15px;}
-  .panel-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;}
+  .panel-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:16px;}
+  @media (max-width:960px){ .panel-grid{grid-template-columns:1fr 1fr;} }
   @media (max-width:760px){ .panel-grid{grid-template-columns:1fr;} }
+
+  .visits-table{margin-top:16px;}
+  .visits-table table{min-width:680px;}
+  td.ip-cell{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; white-space:nowrap;}
 
   .chart{display:flex; align-items:flex-end; gap:3px; height:150px; margin-top:18px;}
   .chart .bar{flex:1 1 0; min-width:3px; min-height:2px; border-radius:3px 3px 0 0; background:var(--ink-light); opacity:0.8;}
@@ -239,6 +244,30 @@
           </table>
           <div class="mini-empty" id="devices-empty" hidden>No visits recorded yet.</div>
         </div>
+        <div class="panel">
+          <h3>Region</h3>
+          <table class="mini-table" id="regions-table">
+            <thead><tr><th>Place</th><th>Visitors</th></tr></thead>
+            <tbody id="regions-body"></tbody>
+          </table>
+          <div class="mini-empty" id="regions-empty" hidden>No visits recorded yet.</div>
+        </div>
+      </div>
+
+      <div class="table-wrap visits-table">
+        <table>
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>IP</th>
+              <th>Region</th>
+              <th>Device</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody id="recent-body"></tbody>
+        </table>
+        <div class="empty-state" id="recent-empty" hidden>No visits recorded yet.</div>
       </div>
 
       <div class="divider"></div>
@@ -406,6 +435,42 @@
 
     renderMiniTable(data.sources || [], document.getElementById('sources-body'), document.getElementById('sources-empty'), 'source', 'visitors');
     renderMiniTable(data.devices || [], document.getElementById('devices-body'), document.getElementById('devices-empty'), 'device', 'visitors');
+    renderMiniTable(data.regions || [], document.getElementById('regions-body'), document.getElementById('regions-empty'), 'location', 'visitors');
+    renderRecent(data.recent || []);
+  }
+
+  function renderRecent(rows){
+    var body = document.getElementById('recent-body');
+    var empty = document.getElementById('recent-empty');
+    body.innerHTML = '';
+    empty.hidden = rows.length > 0;
+    rows.forEach(function(row){
+      var tr = document.createElement('tr');
+
+      var tdWhen = document.createElement('td');
+      tdWhen.textContent = row.createdAt ? new Date(row.createdAt).toLocaleString() : '—';
+      tr.appendChild(tdWhen);
+
+      var tdIp = document.createElement('td');
+      tdIp.className = 'ip-cell';
+      tdIp.textContent = row.ip || '—';
+      tr.appendChild(tdIp);
+
+      var tdLoc = document.createElement('td');
+      tdLoc.textContent = row.location || 'Unknown';
+      tr.appendChild(tdLoc);
+
+      var tdDevice = document.createElement('td');
+      var device = String(row.device || 'unknown');
+      tdDevice.textContent = device.charAt(0).toUpperCase() + device.slice(1);
+      tr.appendChild(tdDevice);
+
+      var tdSource = document.createElement('td');
+      tdSource.textContent = row.referrerHost || 'Direct / typed in';
+      tr.appendChild(tdSource);
+
+      body.appendChild(tr);
+    });
   }
 
   async function loadAnalytics(){

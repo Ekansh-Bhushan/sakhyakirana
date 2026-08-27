@@ -54,11 +54,20 @@ async function ensureSchema(attempts = 5) {
           path TEXT NOT NULL,
           is_new_visitor BOOLEAN NOT NULL DEFAULT false,
           referrer_host TEXT,
-          device TEXT
+          device TEXT,
+          ip TEXT,
+          country TEXT,
+          region TEXT,
+          city TEXT
         );
 
         CREATE INDEX IF NOT EXISTS page_views_created_at_idx ON page_views (created_at DESC);
         CREATE INDEX IF NOT EXISTS page_views_visitor_id_idx ON page_views (visitor_id);
+
+        ALTER TABLE page_views ADD COLUMN IF NOT EXISTS ip TEXT;
+        ALTER TABLE page_views ADD COLUMN IF NOT EXISTS country TEXT;
+        ALTER TABLE page_views ADD COLUMN IF NOT EXISTS region TEXT;
+        ALTER TABLE page_views ADD COLUMN IF NOT EXISTS city TEXT;
       `);
       return;
     } catch (err) {
@@ -92,16 +101,26 @@ async function listSubmissions() {
 
 async function recordPageView(view) {
   await pool.query(
-    `INSERT INTO page_views (visitor_id, path, is_new_visitor, referrer_host, device)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [view.visitorId, view.path, view.isNewVisitor, view.referrerHost || null, view.device || null]
+    `INSERT INTO page_views (visitor_id, path, is_new_visitor, referrer_host, device, ip, country, region, city)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [
+      view.visitorId,
+      view.path,
+      view.isNewVisitor,
+      view.referrerHost || null,
+      view.device || null,
+      view.ip || null,
+      view.country || null,
+      view.region || null,
+      view.city || null,
+    ]
   );
 }
 
 // All day-boundary maths happens in the caller's timezone rather than UTC, so
 // "today" in the admin panel means today where the site's audience actually is.
 async function getAnalytics(timeZone = 'UTC', days = 30) {
-  const [totals, series, sources, devices] = await Promise.all([
+  const [totals, series, sources, devices, regions, recent] = await Promise.all([
     pool.query(
       `SELECT
          COUNT(*)::int AS total_views,
@@ -159,6 +178,23 @@ async function getAnalytics(timeZone = 'UTC', days = 30) {
        GROUP BY 1
        ORDER BY visitors DESC`
     ),
+    pool.query(
+      `SELECT
+         COALESCE(NULLIF(country, ''), 'Unknown') AS country,
+         COALESCE(city, '') AS city,
+         COUNT(*)::int AS views,
+         COUNT(DISTINCT visitor_id)::int AS visitors
+       FROM page_views
+       GROUP BY 1, 2
+       ORDER BY visitors DESC, views DESC
+       LIMIT 15`
+    ),
+    pool.query(
+      `SELECT created_at, ip, country, region, city, device, referrer_host, is_new_visitor
+       FROM page_views
+       ORDER BY created_at DESC
+       LIMIT 50`
+    ),
   ]);
 
   const t = totals.rows[0] || {};
@@ -177,6 +213,17 @@ async function getAnalytics(timeZone = 'UTC', days = 30) {
     daily: series.rows,
     sources: sources.rows,
     devices: devices.rows,
+    regions: regions.rows,
+    recent: recent.rows.map((r) => ({
+      createdAt: r.created_at.toISOString(),
+      ip: r.ip || '',
+      country: r.country || '',
+      region: r.region || '',
+      city: r.city || '',
+      device: r.device || '',
+      referrerHost: r.referrer_host || '',
+      isNewVisitor: Boolean(r.is_new_visitor),
+    })),
   };
 }
 
